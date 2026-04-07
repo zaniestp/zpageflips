@@ -4,9 +4,9 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 // --- YOUR PDF LIBRARY ---
 // You MUST manually update this list whenever you add/remove PDFs in the /data folder
 const pdfLibrary = [
-    { title: "Main Document", path: "./document.pdf" },
-    { title: "Sample Book 2", path: "./book2.pdf" }, // Example: Add more here
-    { title: "Sample Book 3", path: "./book3.pdf" }  // Example: Add more here
+    { title: "Main Document", path: "./data/document.pdf" },
+    { title: "Sample Book 2", path: "./data/book2.pdf" }, // Example: Add more here
+    { title: "Sample Book 3", path: ".//data/book3.pdf" }  // Example: Add more here
 ];
 
 let pdfDoc = null;
