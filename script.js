@@ -81,7 +81,7 @@ async function loadPDF(pdfUrl) {
         pageFlip = new St.PageFlip(flipbookEl, {
             width: 450,
             height: 600,
-            size: "fit",
+            size: "fixed",  // <--- CHANGE THIS LINE
             showCover: true,
             maxShadowOpacity: 0.5,
             drawShadow: true,
