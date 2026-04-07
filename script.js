@@ -18,6 +18,7 @@ const totalPagesEl = document.getElementById('total-pages');
 const currentPageEl = document.getElementById('current-page');
 const selectorEl = document.getElementById('pdf-selector');
 const searchStatusEl = document.getElementById('search-status');
+const flipSound = new Audio('./data/flip.mp3');
 
 // 1. Populate the Dropdown Menu
 function populateDropdown() {
