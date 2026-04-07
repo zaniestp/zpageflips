@@ -8,9 +8,9 @@ let pageFlip = null;
 let currentZoom = 1;
 const ZOOM_STEP = 0.2;
 const MAX_ZOOM = 3.0;
-const MIN_ZOOM = 0.5;
+const MIN_ZOOM = 0.4; // Slightly lower so they can zoom out a bit more
 
-// DOM Elements & Audio
+// DOM Elements
 const bookContainerEl = document.querySelector('.book-container');
 const scaleWrapperEl = document.getElementById('scale-wrapper'); 
 const scrollWrapperEl = document.getElementById('scroll-wrapper'); 
@@ -19,6 +19,7 @@ const currentPageEl = document.getElementById('current-page');
 const selectorEl = document.getElementById('pdf-selector');
 const searchStatusEl = document.getElementById('search-status');
 const gotoInputEl = document.getElementById('goto-input');
+const zoomPercentageEl = document.getElementById('zoom-percentage'); // NEW reference
 
 const flipSound = new Audio('./data/flip.mp3'); 
 
@@ -39,6 +40,9 @@ async function loadPDF(pdfUrl) {
         if (scaleWrapperEl) {
             scaleWrapperEl.style.width = '900px'; 
             scaleWrapperEl.style.height = '600px'; 
+        }
+        if (zoomPercentageEl) {
+            zoomPercentageEl.textContent = '100%'; // Reset the text to 100%
         }
 
         searchStatusEl.textContent = 'Loading...';
@@ -72,13 +76,12 @@ async function loadPDF(pdfUrl) {
             await page.render({ canvasContext: ctx, viewport: viewport }).promise;
         }
 
-        // Initialize StPageFlip
         pageFlip = new St.PageFlip(flipbookEl, {
             width: 450,
             height: 600,
             size: "fixed",          
             showCover: true,  
-            usePortrait: false,     // CRITICAL FIX: Forces 2-page landscape mode ALWAYS
+            usePortrait: false,     
             maxShadowOpacity: 0.9,  
             drawShadow: true,
             flippingTime: 1000
@@ -117,17 +120,24 @@ function setupControls() {
         pageFlip.flip(pageNum - 1);
     });
 
+    // --- NEW: Updates the UI percentage along with the size ---
     function updateZoom() {
         bookContainerEl.style.transform = `scale(${currentZoom})`;
         if (scaleWrapperEl) {
             scaleWrapperEl.style.width = `${900 * currentZoom}px`;
             scaleWrapperEl.style.height = `${600 * currentZoom}px`;
         }
+        if (zoomPercentageEl) {
+            // Convert to a clean percentage (e.g. 1.2 becomes 120%)
+            zoomPercentageEl.textContent = Math.round(currentZoom * 100) + '%';
+        }
     }
 
     document.getElementById('btn-zoom-in').addEventListener('click', () => {
         if (currentZoom < MAX_ZOOM) {
             currentZoom += ZOOM_STEP;
+            // Handle floating point weirdness (e.g. 1.2000000000000002)
+            currentZoom = Math.round(currentZoom * 10) / 10; 
             updateZoom();
         }
     });
@@ -135,6 +145,7 @@ function setupControls() {
     document.getElementById('btn-zoom-out').addEventListener('click', () => {
         if (currentZoom > MIN_ZOOM) {
             currentZoom -= ZOOM_STEP;
+            currentZoom = Math.round(currentZoom * 10) / 10;
             updateZoom();
         }
     });
