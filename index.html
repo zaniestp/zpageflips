@@ -1,231 +1,41 @@
-// Ensure PDF.js worker is set up
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D PDF Interactive Flipbook</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/page-flip/dist/js/page-flip.browser.js"></script>
+</head>
+<body>
 
-let pdfDoc = null;
-let pageFlip = null;
+    <div class="toolbar" style="text-align: center; margin: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+        <select id="pdf-selector" style="margin-right: 15px; padding: 5px;"></select>
+        <button id="btn-prev">◀ Prev</button>
+        <span style="margin: 0 10px; font-weight: bold;">
+            Page <span id="current-page">-</span> of <span id="total-pages">-</span>
+        </span>
+        <button id="btn-next" style="margin-right: 15px;">Next ▶</button>
+        <input type="number" id="goto-input" min="1" value="1" placeholder="Pg" style="width: 60px; padding: 5px;">
+        <button id="btn-goto" style="margin-right: 15px;">Go</button>
+        <button id="btn-zoom-in">Zoom In 🔍+</button>
+        <button id="btn-zoom-out" style="margin-right: 15px;">Zoom Out 🔍-</button>
+        <input type="text" id="search-input" placeholder="Search book..." style="padding: 5px;">
+        <button id="btn-search">Search</button>
+        <span id="search-status" style="margin-left: 10px; color: #e74c3c; font-weight: bold;"></span>
+    </div>
 
-// Zoom State
-let currentZoom = 1;
-const ZOOM_STEP = 0.2;
-const MAX_ZOOM = 3.0;
-const MIN_ZOOM = 0.5;
-
-// DOM Elements & Audio
-const bookContainerEl = document.querySelector('.book-container');
-const scaleWrapperEl = document.getElementById('scale-wrapper'); // New
-const scrollWrapperEl = document.getElementById('scroll-wrapper'); // New
-const totalPagesEl = document.getElementById('total-pages');
-const currentPageEl = document.getElementById('current-page');
-const selectorEl = document.getElementById('pdf-selector');
-const searchStatusEl = document.getElementById('search-status');
-const gotoInputEl = document.getElementById('goto-input');
-
-const flipSound = new Audio('./data/flip.mp3'); 
-
-// 1. Load and Render the PDF
-async function loadPDF(pdfUrl) {
-    try {
-        if (pageFlip) {
-            try { pageFlip.destroy(); } catch (e) { }
-            pageFlip = null;
-        }
-
-        bookContainerEl.innerHTML = '<div id="flipbook"></div>';
-        const flipbookEl = document.getElementById('flipbook');
-
-        // Reset Zoom and Wrapper Sizes on new book load
-        currentZoom = 1;
-        bookContainerEl.style.transform = `scale(${currentZoom})`;
-        if (scaleWrapperEl) {
-            scaleWrapperEl.style.width = '900px'; // Original width (450 * 2)
-            scaleWrapperEl.style.height = '600px'; // Original height
-        }
-
-        searchStatusEl.textContent = 'Loading...';
-        currentPageEl.textContent = '-';
-        totalPagesEl.textContent = '-';
-
-        pdfDoc = await pdfjsLib.getDocument(pdfUrl).promise;
-        const totalPages = pdfDoc.numPages;
-        totalPagesEl.textContent = totalPages;
-
-        if (gotoInputEl) {
-            gotoInputEl.setAttribute('min', 1);
-            gotoInputEl.setAttribute('max', totalPages);
-            gotoInputEl.value = 1;
-        }
-
-        for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
-            const page = await pdfDoc.getPage(pageNum);
-            const pageDiv = document.createElement('div');
-            pageDiv.className = 'page';
+    <div id="scroll-wrapper" class="book-wrapper" style="width: 100%; height: 85vh; overflow: auto; background-color: #ebedef; padding-top: 40px; cursor: grab;">
+        
+        <div id="scale-wrapper" style="width: 900px; height: 600px; margin: 0 auto; padding-bottom: 100px; transition: width 0.3s, height 0.3s; display: flex; justify-content: center;">
             
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            pageDiv.appendChild(canvas);
-            flipbookEl.appendChild(pageDiv);
+            <div class="book-container" style="transform-origin: top center; transition: transform 0.3s ease;">
+                </div>
 
-            // Using scale 2.0 ensures text stays crisp when zoomed in highly
-            const viewport = page.getViewport({ scale: 2.0 });
-            canvas.height = viewport.height;
-            canvas.width = viewport.width;
+        </div>
+    </div>
 
-            await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-        }
-
-        pageFlip = new St.PageFlip(flipbookEl, {
-            width: 450,
-            height: 600,
-            size: "fixed",          
-            showCover: true,        
-            maxShadowOpacity: 0.9,  
-            drawShadow: true,
-            flippingTime: 1000
-        });
-
-        const newPages = flipbookEl.querySelectorAll('.page');
-        pageFlip.loadFromHTML(newPages);
-
-        pageFlip.on('flip', (e) => {
-            currentPageEl.textContent = e.data + 1;
-            if (gotoInputEl) gotoInputEl.value = e.data + 1;
-            flipSound.currentTime = 0; 
-            flipSound.play().catch(err => console.warn("Audio blocked:", err));
-        });
-
-        searchStatusEl.textContent = ''; 
-        currentPageEl.textContent = '1';
-
-    } catch (error) {
-        console.error("FULL SYSTEM ERROR:", error);
-        searchStatusEl.textContent = 'Error loading book';
-    }
-}
-
-// 2. Setup Buttons and Interactivity
-function setupControls() {
-    document.getElementById('btn-prev').addEventListener('click', () => { if (pageFlip) pageFlip.flipPrev(); });
-    document.getElementById('btn-next').addEventListener('click', () => { if (pageFlip) pageFlip.flipNext(); });
-
-    document.getElementById('btn-goto').addEventListener('click', () => {
-        if (!pageFlip || !pdfDoc || !gotoInputEl) return;
-        let pageNum = parseInt(gotoInputEl.value, 10);
-        if (pageNum < 1) pageNum = 1;
-        if (pageNum > pdfDoc.numPages) pageNum = pdfDoc.numPages;
-        gotoInputEl.value = pageNum; 
-        pageFlip.flip(pageNum - 1);
-    });
-
-    // --- NEW: Advanced Zoom Logic ---
-    function updateZoom() {
-        // 1. Scale the visual book
-        bookContainerEl.style.transform = `scale(${currentZoom})`;
-        
-        // 2. Scale the physical wrapper to force scrollbars to appear
-        if (scaleWrapperEl) {
-            scaleWrapperEl.style.width = `${900 * currentZoom}px`;
-            scaleWrapperEl.style.height = `${600 * currentZoom}px`;
-        }
-    }
-
-    document.getElementById('btn-zoom-in').addEventListener('click', () => {
-        if (currentZoom < MAX_ZOOM) {
-            currentZoom += ZOOM_STEP;
-            updateZoom();
-        }
-    });
-
-    document.getElementById('btn-zoom-out').addEventListener('click', () => {
-        if (currentZoom > MIN_ZOOM) {
-            currentZoom -= ZOOM_STEP;
-            updateZoom();
-        }
-    });
-
-    // --- NEW: Drag-to-Pan Functionality ---
-    let isDown = false;
-    let startX, startY, scrollLeft, scrollTop;
-
-    scrollWrapperEl.addEventListener('mousedown', (e) => {
-        // Only pan if they click the background, let the book handle its own page turns
-        if (e.target.closest('.book-container')) return; 
-        
-        isDown = true;
-        scrollWrapperEl.style.cursor = 'grabbing';
-        startX = e.pageX - scrollWrapperEl.offsetLeft;
-        startY = e.pageY - scrollWrapperEl.offsetTop;
-        scrollLeft = scrollWrapperEl.scrollLeft;
-        scrollTop = scrollWrapperEl.scrollTop;
-    });
-
-    scrollWrapperEl.addEventListener('mouseleave', () => {
-        isDown = false;
-        scrollWrapperEl.style.cursor = 'grab';
-    });
-
-    scrollWrapperEl.addEventListener('mouseup', () => {
-        isDown = false;
-        scrollWrapperEl.style.cursor = 'grab';
-    });
-
-    scrollWrapperEl.addEventListener('mousemove', (e) => {
-        if (!isDown) return;
-        e.preventDefault();
-        const x = e.pageX - scrollWrapperEl.offsetLeft;
-        const y = e.pageY - scrollWrapperEl.offsetTop;
-        const walkX = (x - startX) * 1.5; // Scroll speed multiplier
-        const walkY = (y - startY) * 1.5;
-        scrollWrapperEl.scrollLeft = scrollLeft - walkX;
-        scrollWrapperEl.scrollTop = scrollTop - walkY;
-    });
-
-    // --- Search Logic ---
-    document.getElementById('btn-search').addEventListener('click', async () => {
-        if (!pdfDoc) return;
-        const term = document.getElementById('search-input').value.toLowerCase();
-        if (!term) return;
-        
-        searchStatusEl.textContent = "Searching...";
-        for (let i = 1; i <= pdfDoc.numPages; i++) {
-            const page = await pdfDoc.getPage(i);
-            const textContent = await page.getTextContent();
-            const pageText = textContent.items.map(item => item.str).join(' ').toLowerCase();
-            
-            if (pageText.includes(term)) {
-                searchStatusEl.textContent = `Found on page ${i}!`;
-                pageFlip.flip(i - 1);
-                return;
-            }
-        }
-        searchStatusEl.textContent = "Word not found.";
-    });
-}
-
-// 3. Fetch books.inc and start the app
-async function initApp() {
-    try {
-        const response = await fetch('./data/books.inc');
-        if (!response.ok) throw new Error("Could not find books.inc");
-        
-        const text = await response.text();
-        const fileNames = text.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
-        
-        fileNames.forEach(fileName => {
-            const option = document.createElement('option');
-            option.value = `./data/${fileName}`;
-            let prettyTitle = fileName.replace('.pdf', '');
-            prettyTitle = prettyTitle.charAt(0).toUpperCase() + prettyTitle.slice(1);
-            option.textContent = prettyTitle;
-            selectorEl.appendChild(option);
-        });
-
-        selectorEl.addEventListener('change', (e) => loadPDF(e.target.value));
-        setupControls();
-        loadPDF(`./data/${fileNames[0]}`);
-
-    } catch (error) {
-        console.error("Initialization Error:", error);
-    }
-}
-
-initApp();
+    <script src="script.js"></script>
+</body>
+</html>
