@@ -4,12 +4,19 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 let pdfDoc = null;
 let pageFlip = null;
 
+// Zoom State
+let currentZoom = 1;
+const ZOOM_STEP = 0.2;
+const MAX_ZOOM = 2.5;
+const MIN_ZOOM = 0.5;
+
 // DOM Elements & Audio
 const bookContainerEl = document.querySelector('.book-container');
 const totalPagesEl = document.getElementById('total-pages');
 const currentPageEl = document.getElementById('current-page');
 const selectorEl = document.getElementById('pdf-selector');
 const searchStatusEl = document.getElementById('search-status');
+const gotoInputEl = document.getElementById('goto-input'); // Added reference
 
 // The Page Flip Sound Effect
 const flipSound = new Audio('./data/flip.mp3'); 
@@ -31,6 +38,11 @@ async function loadPDF(pdfUrl) {
         bookContainerEl.innerHTML = '<div id="flipbook"></div>';
         const flipbookEl = document.getElementById('flipbook');
 
+        // Reset Zoom on new book load
+        currentZoom = 1;
+        bookContainerEl.style.transform = `scale(${currentZoom})`;
+        bookContainerEl.style.transformOrigin = 'top center'; // Keeps it anchored nicely
+
         searchStatusEl.textContent = 'Loading...';
         currentPageEl.textContent = '-';
         totalPagesEl.textContent = '-';
@@ -39,6 +51,13 @@ async function loadPDF(pdfUrl) {
         pdfDoc = await pdfjsLib.getDocument(pdfUrl).promise;
         const totalPages = pdfDoc.numPages;
         totalPagesEl.textContent = totalPages;
+
+        // CRITICAL UX: Restrict the goto input visually and functionally
+        if (gotoInputEl) {
+            gotoInputEl.setAttribute('min', 1);
+            gotoInputEl.setAttribute('max', totalPages);
+            gotoInputEl.value = 1;
+        }
 
         // Render all pages to canvases
         for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
@@ -52,6 +71,7 @@ async function loadPDF(pdfUrl) {
             pageDiv.appendChild(canvas);
             flipbookEl.appendChild(pageDiv);
 
+            // Using a higher scale here (1.5 or 2.0) ensures it stays crisp when zoomed in
             const viewport = page.getViewport({ scale: 1.5 });
             canvas.height = viewport.height;
             canvas.width = viewport.width;
@@ -64,23 +84,21 @@ async function loadPDF(pdfUrl) {
             width: 450,
             height: 600,
             size: "fixed",          
-            showCover: true,        // <--- CHANGED BACK TO TRUE: Hard cover effect restored
+            showCover: true,        
             maxShadowOpacity: 0.9,  
             drawShadow: true,
             flippingTime: 1000
         });
 
-        // Grab the pages from the DOM
         const newPages = flipbookEl.querySelectorAll('.page');
-        
-        // Load pages into the flipbook
         pageFlip.loadFromHTML(newPages);
 
-        // Listen for flip events to update UI and play sound
         pageFlip.on('flip', (e) => {
             currentPageEl.textContent = e.data + 1;
             
-            // Play the sound
+            // Keep goto input in sync with current page
+            if (gotoInputEl) gotoInputEl.value = e.data + 1;
+
             flipSound.currentTime = 0; 
             flipSound.play().catch(err => console.warn("Browser blocked audio:", err));
         });
@@ -114,11 +132,32 @@ function setupControls() {
         if (pageFlip) pageFlip.flipNext();
     });
 
+    // Updated Goto Logic
     document.getElementById('btn-goto').addEventListener('click', () => {
-        if (!pageFlip || !pdfDoc) return;
-        const pageNum = parseInt(document.getElementById('goto-input').value, 10);
-        if (pageNum >= 1 && pageNum <= pdfDoc.numPages) {
-            pageFlip.flip(pageNum - 1);
+        if (!pageFlip || !pdfDoc || !gotoInputEl) return;
+        
+        let pageNum = parseInt(gotoInputEl.value, 10);
+        
+        // Enforce hard limits in code just in case they bypass the HTML input
+        if (pageNum < 1) pageNum = 1;
+        if (pageNum > pdfDoc.numPages) pageNum = pdfDoc.numPages;
+        
+        gotoInputEl.value = pageNum; // Correct the input field if they typed something invalid
+        pageFlip.flip(pageNum - 1);
+    });
+
+    // NEW: Zoom Logic
+    document.getElementById('btn-zoom-in').addEventListener('click', () => {
+        if (currentZoom < MAX_ZOOM) {
+            currentZoom += ZOOM_STEP;
+            bookContainerEl.style.transform = `scale(${currentZoom})`;
+        }
+    });
+
+    document.getElementById('btn-zoom-out').addEventListener('click', () => {
+        if (currentZoom > MIN_ZOOM) {
+            currentZoom -= ZOOM_STEP;
+            bookContainerEl.style.transform = `scale(${currentZoom})`;
         }
     });
 
@@ -144,27 +183,21 @@ function setupControls() {
     });
 }
 
-// 3. NEW: Fetch books.inc and start the app
+// 3. Fetch books.inc and start the app
 async function initApp() {
     try {
-        // Fetch the text file
         const response = await fetch('./data/books.inc');
         if (!response.ok) throw new Error("Could not find books.inc in the /data folder.");
         
-        // Read the text
         const text = await response.text();
-        
-        // Split by new line, remove empty lines
         const fileNames = text.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
         
         if (fileNames.length === 0) throw new Error("books.inc is empty.");
 
-        // Populate the dropdown menu
         fileNames.forEach(fileName => {
             const option = document.createElement('option');
             option.value = `./data/${fileName}`;
             
-            // Make it pretty: remove ".pdf" and capitalize the first letter
             let prettyTitle = fileName.replace('.pdf', '');
             prettyTitle = prettyTitle.charAt(0).toUpperCase() + prettyTitle.slice(1);
             option.textContent = prettyTitle;
@@ -172,15 +205,11 @@ async function initApp() {
             selectorEl.appendChild(option);
         });
 
-        // Listen for user changing the dropdown
         selectorEl.addEventListener('change', (e) => {
             loadPDF(e.target.value);
         });
 
-        // Setup the control buttons
         setupControls();
-
-        // Load the very first book in the list automatically
         loadPDF(`./data/${fileNames[0]}`);
 
     } catch (error) {
@@ -197,5 +226,4 @@ async function initApp() {
     }
 }
 
-// Start the whole process
 initApp();
