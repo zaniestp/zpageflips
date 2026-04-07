@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive PDF Flipbook</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/page-flip/dist/js/page-flip.browser.js"></script>
+</head>
+<body>
+
+    <div class="toolbar">
+        <div class="control-group">
+            <button id="btn-prev">Previous</button>
+            <span class="page-info">Page <span id="current-page">1</span> of <span id="total-pages">...</span></span>
+            <button id="btn-next">Next</button>
+        </div>
+
+        <div class="control-group">
+            <input type="number" id="goto-input" placeholder="Page #">
+            <button id="btn-goto">Go</button>
+        </div>
+
+        <div class="control-group search-group">
+            <input type="text" id="search-input" placeholder="Search words...">
+            <button id="btn-search">Search</button>
+            <span id="search-status"></span>
+        </div>
+    </div>
+
+    <div class="book-container">
+        <div id="flipbook"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
