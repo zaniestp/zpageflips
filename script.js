@@ -2,6 +2,7 @@
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
 // --- YOUR PDF LIBRARY ---
+// Make sure these files exist inside your /data folder exactly as spelled!
 const pdfLibrary = [
     { title: "Main Document", path: "./data/document.pdf" },
     { title: "Sample Book 2", path: "./data/book2.pdf" }, 
@@ -12,7 +13,7 @@ let pdfDoc = null;
 let pageFlip = null;
 
 // DOM Elements
-const bookContainerEl = document.querySelector('.book-container'); // NEW: Target the parent wrapper
+const bookContainerEl = document.querySelector('.book-container');
 const totalPagesEl = document.getElementById('total-pages');
 const currentPageEl = document.getElementById('current-page');
 const selectorEl = document.getElementById('pdf-selector');
@@ -77,13 +78,13 @@ async function loadPDF(pdfUrl) {
             await page.render({ canvasContext: ctx, viewport: viewport }).promise;
         }
 
-        // Initialize StPageFlip
+        // Initialize StPageFlip with Magazine/Curve settings
         pageFlip = new St.PageFlip(flipbookEl, {
             width: 450,
             height: 600,
-            size: "fixed",  // <--- CHANGE THIS LINE
-            showCover: true,
-            maxShadowOpacity: 0.5,
+            size: "fixed",          // Must be "fixed" or "stretch"
+            showCover: false,       // Set to false for soft-bending first/last pages
+            maxShadowOpacity: 0.9,  // Darker shadows for deeper 3D curve effect
             drawShadow: true,
             flippingTime: 1000
         });
