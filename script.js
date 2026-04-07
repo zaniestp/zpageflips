@@ -2,22 +2,24 @@
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
 // --- YOUR PDF LIBRARY ---
-// Make sure these files exist inside your /data folder exactly as spelled!
 const pdfLibrary = [
     { title: "Main Document", path: "./data/document.pdf" },
-
+    { title: "Sample Book 2", path: "./data/book2.pdf" }, 
+    { title: "Sample Book 3", path: "./data/book3.pdf" }  
 ];
 
 let pdfDoc = null;
 let pageFlip = null;
 
-// DOM Elements
+// DOM Elements & Audio
 const bookContainerEl = document.querySelector('.book-container');
 const totalPagesEl = document.getElementById('total-pages');
 const currentPageEl = document.getElementById('current-page');
 const selectorEl = document.getElementById('pdf-selector');
 const searchStatusEl = document.getElementById('search-status');
-const flipSound = new Audio('./data/flip.mp3');
+
+// The Page Flip Sound Effect
+const flipSound = new Audio('./data/flip.mp3'); 
 
 // 1. Populate the Dropdown Menu
 function populateDropdown() {
@@ -82,21 +84,25 @@ async function loadPDF(pdfUrl) {
         pageFlip = new St.PageFlip(flipbookEl, {
             width: 450,
             height: 600,
-            size: "fixed",          // Must be "fixed" or "stretch"
-            showCover: false,       // Set to false for soft-bending first/last pages
-            maxShadowOpacity: 0.9,  // Darker shadows for deeper 3D curve effect
+            size: "fixed",          
+            showCover: false,       
+            maxShadowOpacity: 0.9,  
             drawShadow: true,
             flippingTime: 1000
         });
 
-        // CRITICAL FIX: Only grab pages from inside the NEW flipbook element
+        // Grab the pages from the DOM
+        const newPages = flipbookEl.querySelectorAll('.page');
+        
+        // Load pages into the flipbook
         pageFlip.loadFromHTML(newPages);
 
+        // Listen for flip events to update UI and play sound
         pageFlip.on('flip', (e) => {
             currentPageEl.textContent = e.data + 1;
             
-            // NEW: Play the sound effect
-            flipSound.currentTime = 0; // Rewind to the start so rapid clicking works
+            // Play the sound
+            flipSound.currentTime = 0; 
             flipSound.play().catch(err => console.warn("Browser blocked audio:", err));
         });
 
@@ -106,7 +112,6 @@ async function loadPDF(pdfUrl) {
     } catch (error) {
         console.error("FULL SYSTEM ERROR:", error);
         
-        // DEBUG MODE: Print the exact error to the screen
         bookContainerEl.innerHTML = `
             <div style="background: rgba(0,0,0,0.8); padding: 30px; border-radius: 8px; text-align: center;">
                 <h2 style="color: #e74c3c; margin-bottom: 10px;">System Crash</h2>
