@@ -91,11 +91,14 @@ async function loadPDF(pdfUrl) {
         });
 
         // CRITICAL FIX: Only grab pages from inside the NEW flipbook element
-        const newPages = flipbookEl.querySelectorAll('.page');
         pageFlip.loadFromHTML(newPages);
 
         pageFlip.on('flip', (e) => {
             currentPageEl.textContent = e.data + 1;
+            
+            // NEW: Play the sound effect
+            flipSound.currentTime = 0; // Rewind to the start so rapid clicking works
+            flipSound.play().catch(err => console.warn("Browser blocked audio:", err));
         });
 
         searchStatusEl.textContent = ''; 
