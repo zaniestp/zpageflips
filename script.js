@@ -5,8 +5,8 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 // Make sure these files exist inside your /data folder exactly as spelled!
 const pdfLibrary = [
     { title: "Main Document", path: "./data/document.pdf" },
-    { title: "Sample Book 2", path: "./data/book2.pdf" }, 
-    { title: "Sample Book 3", path: "./data/book3.pdf" }  
+    { title: "Sample Book 2", path: "./data/document2.pdf" }, 
+    { title: "Sample Book 3", path: "./data/document3.pdf" }  
 ];
 
 let pdfDoc = null;
