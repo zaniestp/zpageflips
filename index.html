@@ -3,43 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interactive PDF Flipbook</title>
+    <title>3D PDF Interactive Flipbook</title>
+    
     <link rel="stylesheet" href="style.css">
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    
     <script src="https://cdn.jsdelivr.net/npm/page-flip/dist/js/page-flip.browser.js"></script>
 </head>
 <body>
 
-    <div class="toolbar">
-       <div class="toolbar">
-        <div class="control-group">
-            <select id="pdf-selector">
-                </select>
-        </div>
+    <div class="toolbar" style="text-align: center; margin: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+        
+        <select id="pdf-selector" style="margin-right: 15px; padding: 5px;"></select>
 
-        <div class="control-group">
-            <button id="btn-prev">Previous</button>
-            <span class="page-info">Page <span id="current-page">-</span> of <span id="total-pages">-</span></span>
-            <button id="btn-next">Next</button>
-        </div>
+        <button id="btn-prev">◀ Prev</button>
+        <span style="margin: 0 10px; font-weight: bold;">
+            Page <span id="current-page">-</span> of <span id="total-pages">-</span>
+        </span>
+        <button id="btn-next" style="margin-right: 15px;">Next ▶</button>
 
-        <div class="control-group">
-            <input type="number" id="goto-input" placeholder="Page #">
-            <button id="btn-goto">Go</button>
-        </div>
+        <input type="number" id="goto-input" min="1" value="1" placeholder="Pg" style="width: 60px; padding: 5px;">
+        <button id="btn-goto" style="margin-right: 15px;">Go</button>
 
-        <div class="control-group search-group">
-            <input type="text" id="search-input" placeholder="Search words...">
-            <button id="btn-search">Search</button>
-            <span id="search-status"></span>
-        </div>
-    </div>
+        <button id="btn-zoom-in">Zoom In 🔍+</button>
+        <button id="btn-zoom-out" style="margin-right: 15px;">Zoom Out 🔍-</button>
+
+        <input type="text" id="search-input" placeholder="Search book..." style="padding: 5px;">
+        <button id="btn-search">Search</button>
+        <span id="search-status" style="margin-left: 10px; color: #e74c3c; font-weight: bold;"></span>
+        
     </div>
 
-    <div class="book-container">
-        <div id="flipbook"></div>
+    <div class="book-wrapper" style="display: flex; justify-content: center; align-items: center; min-height: 800px; overflow: hidden; background-color: #ebedef;">
+        <div class="book-container" style="transition: transform 0.3s ease;">
+            </div>
     </div>
 
     <script src="script.js"></script>
+    
 </body>
 </html>
