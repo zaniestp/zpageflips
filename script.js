@@ -1,7 +1,14 @@
 // Ensure PDF.js worker is set up
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
-const pdfUrl = './data/document.pdf'; // Path to your PDF
+// --- YOUR PDF LIBRARY ---
+// You MUST manually update this list whenever you add/remove PDFs in the /data folder
+const pdfLibrary = [
+    { title: "Main Document", path: "./data/document.pdf" },
+    { title: "Sample Book 2", path: "./data/book2.pdf" }, // Example: Add more here
+    { title: "Sample Book 3", path: "./data/book3.pdf" }  // Example: Add more here
+];
+
 let pdfDoc = null;
 let pageFlip = null;
 
@@ -9,19 +16,46 @@ let pageFlip = null;
 const flipbookEl = document.getElementById('flipbook');
 const totalPagesEl = document.getElementById('total-pages');
 const currentPageEl = document.getElementById('current-page');
+const selectorEl = document.getElementById('pdf-selector');
+const searchStatusEl = document.getElementById('search-status');
 
-async function init() {
+// 1. Populate the Dropdown Menu
+function populateDropdown() {
+    pdfLibrary.forEach((pdf, index) => {
+        const option = document.createElement('option');
+        option.value = pdf.path;
+        option.textContent = pdf.title;
+        selectorEl.appendChild(option);
+    });
+
+    // Listen for user changing the PDF
+    selectorEl.addEventListener('change', (e) => {
+        loadPDF(e.target.value);
+    });
+}
+
+// 2. Load and Render the PDF
+async function loadPDF(pdfUrl) {
     try {
-        // 1. Load the PDF
+        // CLEANUP: If a flipbook already exists, destroy it before making a new one
+        if (pageFlip) {
+            pageFlip.destroy();
+            pageFlip = null;
+        }
+        flipbookEl.innerHTML = ''; // Clear out the old canvas elements
+        searchStatusEl.textContent = 'Loading...';
+        currentPageEl.textContent = '-';
+        totalPagesEl.textContent = '-';
+
+        // Load the new PDF
         pdfDoc = await pdfjsLib.getDocument(pdfUrl).promise;
         const totalPages = pdfDoc.numPages;
         totalPagesEl.textContent = totalPages;
 
-        // 2. Render all pages to canvases
+        // Render all pages to canvases
         for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
             const page = await pdfDoc.getPage(pageNum);
             
-            // Create DOM elements for the page
             const pageDiv = document.createElement('div');
             pageDiv.className = 'page';
             
@@ -30,90 +64,84 @@ async function init() {
             pageDiv.appendChild(canvas);
             flipbookEl.appendChild(pageDiv);
 
-            // Calculate scale based on standard viewport
             const viewport = page.getViewport({ scale: 1.5 });
             canvas.height = viewport.height;
             canvas.width = viewport.width;
 
-            // Render PDF page into canvas context
-            await page.render({
-                canvasContext: ctx,
-                viewport: viewport
-            }).promise;
+            await page.render({ canvasContext: ctx, viewport: viewport }).promise;
         }
 
-        // 3. Initialize StPageFlip
+        // Initialize StPageFlip on the new elements
         pageFlip = new St.PageFlip(flipbookEl, {
-            width: 450, // Base width per page
-            height: 600, // Base height per page
-            size: "fit", // Automatically fit parent container
+            width: 450,
+            height: 600,
+            size: "fit",
             showCover: true,
             maxShadowOpacity: 0.5,
             drawShadow: true,
             flippingTime: 1000
         });
 
-        // Load pages from DOM
         pageFlip.loadFromHTML(document.querySelectorAll('.page'));
 
-        // Update UI when pages flip
         pageFlip.on('flip', (e) => {
-            currentPageEl.textContent = e.data + 1; // e.data is the 0-indexed page number
+            currentPageEl.textContent = e.data + 1;
         });
 
-        setupControls();
+        searchStatusEl.textContent = ''; // Clear loading text
+        currentPageEl.textContent = '1';
 
     } catch (error) {
-        console.error("Error loading PDF or setting up flipbook:", error);
-        flipbookEl.innerHTML = `<h2 style="color: white;">Error loading PDF. Ensure you are running this on a local server.</h2>`;
+        console.error("Error loading PDF:", error);
+        flipbookEl.innerHTML = `<h2 style="color: white; text-align:center;">Error loading PDF.<br>Check console or ensure path is correct.</h2>`;
+        searchStatusEl.textContent = 'Error';
     }
 }
 
+// 3. Setup Buttons (Only needs to run once)
 function setupControls() {
-    // Prev / Next
     document.getElementById('btn-prev').addEventListener('click', () => {
-        pageFlip.flipPrev();
+        if (pageFlip) pageFlip.flipPrev();
     });
 
     document.getElementById('btn-next').addEventListener('click', () => {
-        pageFlip.flipNext();
+        if (pageFlip) pageFlip.flipNext();
     });
 
-    // Go to Page
     document.getElementById('btn-goto').addEventListener('click', () => {
+        if (!pageFlip || !pdfDoc) return;
         const pageNum = parseInt(document.getElementById('goto-input').value, 10);
         if (pageNum >= 1 && pageNum <= pdfDoc.numPages) {
-            // PageFlip uses 0-based indexing
             pageFlip.flip(pageNum - 1);
         }
     });
 
-    // Search functionality
     document.getElementById('btn-search').addEventListener('click', async () => {
+        if (!pdfDoc) return;
         const term = document.getElementById('search-input').value.toLowerCase();
-        const statusEl = document.getElementById('search-status');
         
         if (!term) return;
+        searchStatusEl.textContent = "Searching...";
         
-        statusEl.textContent = "Searching...";
-        
-        // Loop through PDF text content to find the word
         for (let i = 1; i <= pdfDoc.numPages; i++) {
             const page = await pdfDoc.getPage(i);
             const textContent = await page.getTextContent();
-            
-            // Combine all text items on the page into one string
             const pageText = textContent.items.map(item => item.str).join(' ').toLowerCase();
             
             if (pageText.includes(term)) {
-                statusEl.textContent = `Found on page ${i}!`;
+                searchStatusEl.textContent = `Found on page ${i}!`;
                 pageFlip.flip(i - 1);
-                return; // Stop searching after first match
+                return;
             }
         }
-        statusEl.textContent = "Word not found.";
+        searchStatusEl.textContent = "Word not found.";
     });
 }
 
 // Start the app
-init();
+populateDropdown();
+setupControls();
+// Load the first PDF in the library by default
+if (pdfLibrary.length > 0) {
+    loadPDF(pdfLibrary[0].path);
+}
