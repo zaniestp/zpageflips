@@ -1,13 +1,6 @@
 // Ensure PDF.js worker is set up
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
-// --- YOUR PDF LIBRARY ---
-const pdfLibrary = [
-    { title: "Main Document", path: "./data/document.pdf" },
-    { title: "Sample Book 2", path: "./data/book2.pdf" }, 
-    { title: "Sample Book 3", path: "./data/book3.pdf" }  
-];
-
 let pdfDoc = null;
 let pageFlip = null;
 
@@ -21,21 +14,7 @@ const searchStatusEl = document.getElementById('search-status');
 // The Page Flip Sound Effect
 const flipSound = new Audio('./data/flip.mp3'); 
 
-// 1. Populate the Dropdown Menu
-function populateDropdown() {
-    pdfLibrary.forEach((pdf, index) => {
-        const option = document.createElement('option');
-        option.value = pdf.path;
-        option.textContent = pdf.title;
-        selectorEl.appendChild(option);
-    });
-
-    selectorEl.addEventListener('change', (e) => {
-        loadPDF(e.target.value);
-    });
-}
-
-// 2. Load and Render the PDF
+// 1. Load and Render the PDF
 async function loadPDF(pdfUrl) {
     try {
         // CLEANUP: Safely destroy the old instance
@@ -80,12 +59,12 @@ async function loadPDF(pdfUrl) {
             await page.render({ canvasContext: ctx, viewport: viewport }).promise;
         }
 
-        // Initialize StPageFlip with Magazine/Curve settings
+        // Initialize StPageFlip
         pageFlip = new St.PageFlip(flipbookEl, {
             width: 450,
             height: 600,
             size: "fixed",          
-            showCover: false,       
+            showCover: true,        // <--- CHANGED BACK TO TRUE: Hard cover effect restored
             maxShadowOpacity: 0.9,  
             drawShadow: true,
             flippingTime: 1000
@@ -125,7 +104,7 @@ async function loadPDF(pdfUrl) {
     }
 }
 
-// 3. Setup Buttons (Only needs to run once)
+// 2. Setup Buttons
 function setupControls() {
     document.getElementById('btn-prev').addEventListener('click', () => {
         if (pageFlip) pageFlip.flipPrev();
@@ -165,9 +144,58 @@ function setupControls() {
     });
 }
 
-// Start the app
-populateDropdown();
-setupControls();
-if (pdfLibrary.length > 0) {
-    loadPDF(pdfLibrary[0].path);
+// 3. NEW: Fetch books.inc and start the app
+async function initApp() {
+    try {
+        // Fetch the text file
+        const response = await fetch('./data/books.inc');
+        if (!response.ok) throw new Error("Could not find books.inc in the /data folder.");
+        
+        // Read the text
+        const text = await response.text();
+        
+        // Split by new line, remove empty lines
+        const fileNames = text.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
+        
+        if (fileNames.length === 0) throw new Error("books.inc is empty.");
+
+        // Populate the dropdown menu
+        fileNames.forEach(fileName => {
+            const option = document.createElement('option');
+            option.value = `./data/${fileName}`;
+            
+            // Make it pretty: remove ".pdf" and capitalize the first letter
+            let prettyTitle = fileName.replace('.pdf', '');
+            prettyTitle = prettyTitle.charAt(0).toUpperCase() + prettyTitle.slice(1);
+            option.textContent = prettyTitle;
+            
+            selectorEl.appendChild(option);
+        });
+
+        // Listen for user changing the dropdown
+        selectorEl.addEventListener('change', (e) => {
+            loadPDF(e.target.value);
+        });
+
+        // Setup the control buttons
+        setupControls();
+
+        // Load the very first book in the list automatically
+        loadPDF(`./data/${fileNames[0]}`);
+
+    } catch (error) {
+        console.error("Initialization Error:", error);
+        bookContainerEl.innerHTML = `
+            <div style="background: rgba(0,0,0,0.8); padding: 30px; border-radius: 8px; text-align: center;">
+                <h2 style="color: #e74c3c; margin-bottom: 10px;">Library Error</h2>
+                <p style="color: white; margin-bottom: 15px;">Could not load the book list.</p>
+                <div style="background: #2c3e50; padding: 15px; color: #f1c40f; font-family: monospace; border-radius: 4px;">
+                    ${error.message || error}
+                </div>
+            </div>
+        `;
+    }
 }
+
+// Start the whole process
+initApp();
