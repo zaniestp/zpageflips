@@ -11,9 +11,15 @@
 <body>
 
     <div class="toolbar">
+       <div class="toolbar">
+        <div class="control-group">
+            <select id="pdf-selector">
+                </select>
+        </div>
+
         <div class="control-group">
             <button id="btn-prev">Previous</button>
-            <span class="page-info">Page <span id="current-page">1</span> of <span id="total-pages">...</span></span>
+            <span class="page-info">Page <span id="current-page">-</span> of <span id="total-pages">-</span></span>
             <button id="btn-next">Next</button>
         </div>
 
@@ -27,6 +33,7 @@
             <button id="btn-search">Search</button>
             <span id="search-status"></span>
         </div>
+    </div>
     </div>
 
     <div class="book-container">
