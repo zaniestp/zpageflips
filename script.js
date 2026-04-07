@@ -2,18 +2,17 @@
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
 // --- YOUR PDF LIBRARY ---
-// You MUST manually update this list whenever you add/remove PDFs in the /data folder
 const pdfLibrary = [
     { title: "Main Document", path: "./data/document.pdf" },
-    { title: "Sample Book 2", path: "./data/book2.pdf" }, // Example: Add more here
-    { title: "Sample Book 3", path: ".//data/book3.pdf" }  // Example: Add more here
+    { title: "Sample Book 2", path: "./data/book2.pdf" }, 
+    { title: "Sample Book 3", path: "./data/book3.pdf" }  
 ];
 
 let pdfDoc = null;
 let pageFlip = null;
 
 // DOM Elements
-const flipbookEl = document.getElementById('flipbook');
+const bookContainerEl = document.querySelector('.book-container'); // NEW: Target the parent wrapper
 const totalPagesEl = document.getElementById('total-pages');
 const currentPageEl = document.getElementById('current-page');
 const selectorEl = document.getElementById('pdf-selector');
@@ -28,7 +27,6 @@ function populateDropdown() {
         selectorEl.appendChild(option);
     });
 
-    // Listen for user changing the PDF
     selectorEl.addEventListener('change', (e) => {
         loadPDF(e.target.value);
     });
@@ -37,12 +35,20 @@ function populateDropdown() {
 // 2. Load and Render the PDF
 async function loadPDF(pdfUrl) {
     try {
-        // CLEANUP: If a flipbook already exists, destroy it before making a new one
+        // CLEANUP: Safely destroy the old instance
         if (pageFlip) {
-            pageFlip.destroy();
+            try {
+                pageFlip.destroy();
+            } catch (cleanupError) {
+                console.warn("Minor cleanup error ignored:", cleanupError);
+            }
             pageFlip = null;
         }
-        flipbookEl.innerHTML = ''; // Clear out the old canvas elements
+
+        // CRITICAL FIX: Completely recreate the flipbook DOM element
+        bookContainerEl.innerHTML = '<div id="flipbook"></div>';
+        const flipbookEl = document.getElementById('flipbook');
+
         searchStatusEl.textContent = 'Loading...';
         currentPageEl.textContent = '-';
         totalPagesEl.textContent = '-';
@@ -71,7 +77,7 @@ async function loadPDF(pdfUrl) {
             await page.render({ canvasContext: ctx, viewport: viewport }).promise;
         }
 
-        // Initialize StPageFlip on the new elements
+        // Initialize StPageFlip
         pageFlip = new St.PageFlip(flipbookEl, {
             width: 450,
             height: 600,
@@ -82,18 +88,30 @@ async function loadPDF(pdfUrl) {
             flippingTime: 1000
         });
 
-        pageFlip.loadFromHTML(document.querySelectorAll('.page'));
+        // CRITICAL FIX: Only grab pages from inside the NEW flipbook element
+        const newPages = flipbookEl.querySelectorAll('.page');
+        pageFlip.loadFromHTML(newPages);
 
         pageFlip.on('flip', (e) => {
             currentPageEl.textContent = e.data + 1;
         });
 
-        searchStatusEl.textContent = ''; // Clear loading text
+        searchStatusEl.textContent = ''; 
         currentPageEl.textContent = '1';
 
     } catch (error) {
-        console.error("Error loading PDF:", error);
-        flipbookEl.innerHTML = `<h2 style="color: white; text-align:center;">Error loading PDF.<br>Check console or ensure path is correct.</h2>`;
+        console.error("FULL SYSTEM ERROR:", error);
+        
+        // DEBUG MODE: Print the exact error to the screen
+        bookContainerEl.innerHTML = `
+            <div style="background: rgba(0,0,0,0.8); padding: 30px; border-radius: 8px; text-align: center;">
+                <h2 style="color: #e74c3c; margin-bottom: 10px;">System Crash</h2>
+                <p style="color: white; margin-bottom: 15px;">The PDF loaded, but the flipbook failed to build.</p>
+                <div style="background: #2c3e50; padding: 15px; color: #f1c40f; font-family: monospace; border-radius: 4px;">
+                    ${error.message || error}
+                </div>
+            </div>
+        `;
         searchStatusEl.textContent = 'Error';
     }
 }
@@ -141,7 +159,6 @@ function setupControls() {
 // Start the app
 populateDropdown();
 setupControls();
-// Load the first PDF in the library by default
 if (pdfLibrary.length > 0) {
     loadPDF(pdfLibrary[0].path);
 }
